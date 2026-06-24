@@ -1,0 +1,19 @@
+{
+  "name": "audio-dna-pipeline",
+  "version": "0.1.0",
+  "description": "Pipeline batch para procesar CSV del FEP: descarga WAV, análisis emocional y generación de JSON",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "setup:models": "node scripts/setup-models.js",
+    "test:models": "node scripts/test-models.js",
+    "pipeline": "node pipeline/cli.js"
+  },
+  "dependencies": {
+    "@tensorflow/tfjs-node": "^4.22.0",
+    "csv-parse": "^5.6.0",
+    "dotenv": "^16.4.7"
+  }
+}
