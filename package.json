@@ -7,7 +7,9 @@
     "node": ">=20"
   },
   "scripts": {
+    "postinstall": "node scripts/setup-tfjs-node.js",
     "setup:models": "node scripts/setup-models.js",
+    "setup:tfjs": "node scripts/setup-tfjs-node.js",
     "test:models": "node scripts/test-models.js",
     "pipeline": "node pipeline/cli.js"
   },

@@ -18,9 +18,9 @@ const MODELS = [
   { key: 'danceable', folder: 'danceability-musicnn' },
 ];
 
-/** Tensor dummy: batch 1, mel bins 96, frames 187 (forma típica MusicNN) */
+/** Vector de 200 features (forma del Placeholder en model.json) */
 function dummyInput() {
-  return tf.zeros([1, 187, 96]);
+  return tf.zeros([1, 200]);
 }
 
 async function loadAndInfer({ key, folder }) {

@@ -24,8 +24,6 @@ Ejemplo (cuando esté implementado):
   npm run pipeline -- run --year 2013 \\
     --csv ../audio-dna/FEP_2013.csv \\
     --output-dir ../audio-dna/DATA_2013
-
-Estado actual: Paso 0 — esqueleto. Siguiente: Fase 1 (npm run test:models).
 `.trim();
 
 const args = process.argv.slice(2);

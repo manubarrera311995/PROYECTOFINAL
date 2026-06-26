@@ -6,8 +6,6 @@ Pipeline batch para automatizar el procesamiento de archivos del Festival Estér
 FEP_{year}.csv → descarga WAV → análisis Node.js → DATA_{year}/{id}.json
 ```
 
-Este repo lee los CSV, escribe los JSON y mantiene el progreso y gestiona el pipeline de procesamiento.
-
 ## Requisitos
 
 - **Node.js** 20+
@@ -20,7 +18,10 @@ Este repo lee los CSV, escribe los JSON y mantiene el progreso y gestiona el pip
 npm install
 npm run setup:models
 cp .env.example .env
+npm run test:models
 ```
+
+Usar **Node.js 20 LTS**. En Windows, `npm install` ejecuta `postinstall` para configurar `tfjs-node`. Si falla: `npm run setup:tfjs`.
 
 ## Estructura
 
@@ -30,9 +31,5 @@ cp .env.example .env
 ├── models/         # Essentia TF.js (gitignored; ver setup:models)
 ├── scripts/        # setup y pruebas
 ├── downloads/      # WAV temporales (gitignored)
-├── progress/       # estado por edición/id
-├── reports/        # quality_{year}.json
-└── docs/           # plan y propuesta
+└── ...
 ```
-
-
