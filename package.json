@@ -11,6 +11,7 @@
     "setup:models": "node scripts/setup-models.js",
     "setup:tfjs": "node scripts/setup-tfjs-node.js",
     "test:models": "node scripts/test-models.js",
+    "test:core": "node scripts/test-core.js",
     "pipeline": "node pipeline/cli.js"
   },
   "dependencies": {
