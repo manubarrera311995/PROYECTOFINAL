@@ -11,7 +11,14 @@
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { existsSync }    from 'node:fs';
-import * as tf           from '@tensorflow/tfjs-node';
+
+// tf se importa de forma lazy la primera vez que se necesitan los modelos
+// para evitar el coste de inicialización en comandos que no analizan (--help, status…)
+let _tf = null;
+async function getTf() {
+  if (!_tf) _tf = await import('@tensorflow/tfjs-node');
+  return _tf;
+}
 
 import {
   computeAcousticFeatures,
@@ -62,6 +69,7 @@ async function getModels() {
       return null;
     }
 
+    const tf  = await getTf();
     const map = new Map();
     for (const { key, folder } of MODEL_SPECS) {
       const modelPath = join(MODELS_DIR, folder, 'model.json');
@@ -102,6 +110,7 @@ async function getModels() {
 async function runEssentiaModels(embeddings, models) {
   if (!models || !embeddings || embeddings.length < 200) return null;
 
+  const tf            = await getTf();
   const tensor        = tf.tensor2d(embeddings, [1, 200]);
   const learningPhase = tf.scalar(false);
   const scores        = { happy: null, relaxed: null, aggressive: null, danceable: null };
