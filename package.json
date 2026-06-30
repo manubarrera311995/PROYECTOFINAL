@@ -13,6 +13,7 @@
     "test:models": "node scripts/test-models.js",
     "test:core": "node scripts/test-core.js",
     "test:download": "node scripts/test-download.js",
+    "test:analyze": "node scripts/test-analyze.js",
     "pipeline": "node pipeline/cli.js"
   },
   "dependencies": {
