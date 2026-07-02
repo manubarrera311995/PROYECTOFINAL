@@ -15,8 +15,8 @@
     "test:download": "node scripts/test-download.js",
     "test:analyze": "node scripts/test-analyze.js",
     "pipeline": "node pipeline/cli.js",
-    "process:all": "node pipeline/cli.js run --all --csv-dir ../audio-dna --output-base ../audio-dna",
-    "process:year": "node pipeline/cli.js run --csv ../audio-dna/FEP_2013.csv --output-dir ../audio-dna/DATA_2013 --year 2013"
+    "process:all": "node pipeline/cli.js run --all",
+    "process:year": "node pipeline/cli.js run --year 2013"
   },
   "dependencies": {
     "@tensorflow/tfjs-node": "^4.22.0",

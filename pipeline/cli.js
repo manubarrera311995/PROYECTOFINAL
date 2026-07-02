@@ -9,10 +9,10 @@
 
 import 'dotenv/config';
 import { existsSync, readdirSync } from 'node:fs';
-import { resolve, join }           from 'node:path';
-import { writeFile, mkdir }        from 'node:fs/promises';
+import { resolve, join }            from 'node:path';
 import { runYear, downloadYear, analyzeYear, retryYear } from './runner.js';
 import { loadProgress, countByStatus, getIdsByStatus }  from './progress.js';
+import { validateEdition } from './validate.js';
 import { readCsv } from './csv.js';
 
 // ─── Ayuda ────────────────────────────────────────────────────────────────────
@@ -101,10 +101,10 @@ function resolveYears(args) {
   return null;
 }
 
-const DEFAULT_CSV_DIR     = resolve('..', 'audio-dna');
-const DEFAULT_OUTPUT_BASE = resolve('..', 'audio-dna');
-const DEFAULT_DL_DIR      = resolve('downloads');
-const DEFAULT_PROGRESS    = resolve('progress');
+const DEFAULT_CSV_DIR     = resolve(process.env.CSV_DIR     || join('..', 'audio-dna'));
+const DEFAULT_OUTPUT_BASE = resolve(process.env.OUTPUT_BASE || join('..', 'audio-dna'));
+const DEFAULT_DL_DIR      = resolve(process.env.DOWNLOADS_DIR || 'downloads');
+const DEFAULT_PROGRESS    = resolve(process.env.PROGRESS_DIR  || 'progress');
 
 function detectYearsFromCsvDir(csvDir) {
   if (!existsSync(csvDir)) throw new Error(`--csv-dir no encontrado: ${csvDir}`);
@@ -127,10 +127,12 @@ function buildYearOpts(year, args) {
     ? resolve(args['output-dir'])
     : join(outputBase, `DATA_${year}`);
 
-  const skipExisting  = args['no-skip-existing'] ? false : true;
-  const deleteWav     = !!args['delete-wav-after'];
+  const skipExisting    = args['no-skip-existing'] ? false : true;
+  const deleteWav       = !!args['delete-wav-after'];
+  const downloadWorkers = parseInt(args['download-workers'] || process.env.DOWNLOAD_WORKERS || '1', 10);
+  const analyzeWorkers  = parseInt(args['analyze-workers']  || process.env.ANALYZE_WORKERS  || '1', 10);
 
-  return { year, csvPath, outputDir, downloadsDir: dlDir, progressDir: progDir, skipExisting, deleteWavAfter: deleteWav };
+  return { year, csvPath, outputDir, downloadsDir: dlDir, progressDir: progDir, skipExisting, deleteWavAfter: deleteWav, downloadWorkers, analyzeWorkers };
 }
 
 // ─── Comandos ─────────────────────────────────────────────────────────────────
@@ -194,44 +196,33 @@ async function cmdStatus(args) {
 
 async function cmdValidate(args) {
   let years = resolveYears(args);
-  const csvDir  = resolve(args['csv-dir']      || DEFAULT_CSV_DIR);
-  const progDir = resolve(args['progress-dir'] || DEFAULT_PROGRESS);
+  const csvDir     = resolve(args['csv-dir']      || DEFAULT_CSV_DIR);
+  const outputBase = resolve(args['output-base']  || DEFAULT_OUTPUT_BASE);
   const reportsDir = resolve('reports');
 
-  if (!years) years = detectYearsFromCsvDir(csvDir).filter(y => existsSync(join(progDir, `${y}.json`)));
+  if (!years) {
+    // Detectar años por carpetas DATA_{year} existentes en output-base
+    if (existsSync(outputBase)) {
+      years = readdirSync(outputBase)
+        .filter(f => /^DATA_\d{4}$/.test(f))
+        .map(f => f.replace('DATA_', ''));
+    }
+    if (!years?.length) years = detectYearsFromCsvDir(csvDir);
+  }
   if (!years.length) { console.log('Nada que validar.'); return; }
 
-  await mkdir(reportsDir, { recursive: true });
-
+  console.log(`\n── Validando ${years.length} edición(es) ──\n`);
   for (const year of years) {
-    const opts   = buildYearOpts(year, args);
-    if (!existsSync(opts.csvPath)) continue;
+    const dataDir = args['output-dir']
+      ? resolve(args['output-dir'])
+      : join(outputBase, `DATA_${year}`);
+    const csvPath = args.csv
+      ? resolve(args.csv)
+      : join(csvDir, `FEP_${year}.csv`);
 
-    const rows   = await readCsv(opts.csvPath);
-    const state  = await loadProgress(year, progDir);
-    const counts = countByStatus(state);
-
-    // Contar skipped (ids con done pero marcados como skipped)
-    const skipped = Object.values(state.ids).filter(v => v.status === 'done' && v.skippedAt).length;
-    const failedIds = getIdsByStatus(state, 'failed');
-
-    const report = {
-      year:      Number(year),
-      total:     rows.length,
-      done:      counts.done,
-      failed:    counts.failed,
-      skipped,
-      pending:   counts.pending + counts.downloading + counts.downloaded + counts.analyzing,
-      failedIds,
-      generatedAt: new Date().toISOString(),
-    };
-
-    const reportPath = join(reportsDir, `quality_${year}.json`);
-    await writeFile(reportPath, JSON.stringify(report, null, 2), 'utf8');
-    console.log(`  [${year}] Reporte: ${reportPath}`);
-    console.log(`         done: ${report.done}  failed: ${report.failed}  pending: ${report.pending}`);
-    if (failedIds.length) console.log(`         fallidos: ${failedIds.join(', ')}`);
+    await validateEdition({ year, dataDir, reportDir: reportsDir, csvPath });
   }
+  console.log();
 }
 
 // ─── Helper visual ────────────────────────────────────────────────────────────

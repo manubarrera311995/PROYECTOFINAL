@@ -19,6 +19,23 @@ const YTDLP_CMD = process.env.YTDLP_PATH || 'yt-dlp';
 const DEFAULT_RETRIES    = 3;
 const DEFAULT_RETRY_WAIT = 5; // segundos entre reintentos
 
+// ─── Cookies (para videos age-restricted o con login requerido) ───────────────
+// Prioridad: YTDLP_COOKIES_FILE > YTDLP_COOKIES_FROM_BROWSER > nada
+// Ejemplos en .env:
+//   YTDLP_COOKIES_FROM_BROWSER=chrome   (lee cookies de Chrome automáticamente)
+//   YTDLP_COOKIES_FROM_BROWSER=firefox
+//   YTDLP_COOKIES_FROM_BROWSER=edge
+//   YTDLP_COOKIES_FILE=./cookies.txt    (archivo exportado manualmente)
+function buildCookieArgs() {
+  if (process.env.YTDLP_COOKIES_FILE) {
+    return ['--cookies', process.env.YTDLP_COOKIES_FILE];
+  }
+  if (process.env.YTDLP_COOKIES_FROM_BROWSER) {
+    return ['--cookies-from-browser', process.env.YTDLP_COOKIES_FROM_BROWSER];
+  }
+  return [];
+}
+
 // ─── Utilidades ───────────────────────────────────────────────────────────────
 
 /**
@@ -120,9 +137,12 @@ export async function downloadTrack({
 // ─── Descarga interna ─────────────────────────────────────────────────────────
 
 async function doDownload({ ytCmd, ytArgs, searchQuery, wavPath, id }) {
+  const cookieArgs = buildCookieArgs();
+
   // Paso 1: obtener metadatos del video (título, duración) sin descargar
   const metaArgs = [
     ...ytArgs,
+    ...cookieArgs,
     '--print', '%(title)s\n%(duration)s',
     '--no-playlist',
     '--default-search', 'ytsearch',
@@ -143,6 +163,7 @@ async function doDownload({ ytCmd, ytArgs, searchQuery, wavPath, id }) {
   // Paso 2: descargar y convertir a WAV 16 kHz mono con ffmpeg embebido en yt-dlp
   const dlArgs = [
     ...ytArgs,
+    ...cookieArgs,
     '--extract-audio',
     '--audio-format',    'wav',
     '--audio-quality',   '0',           // mejor calidad antes de convertir
