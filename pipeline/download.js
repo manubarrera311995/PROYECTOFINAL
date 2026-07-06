@@ -1,6 +1,6 @@
 /**
  * pipeline/download.js
- * Fase 3 — Descarga de audio desde YouTube vía yt-dlp.
+ * Descarga de audio desde YouTube vía yt-dlp.
  *
  * Flujo: CSV fila (id, banda, cancion, year) → WAV en downloads/{year}/{id}.wav
  * Búsqueda: `ytsearch1:{banda} - {cancion}` (primer resultado de YouTube)

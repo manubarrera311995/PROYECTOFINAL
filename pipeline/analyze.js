@@ -1,6 +1,6 @@
 /**
  * pipeline/analyze.js
- * Fase 4 — WAV → PCM (ffmpeg) → analyzeBuffer (core/) → {id}.json
+ * WAV → PCM (ffmpeg) → analyzeBuffer (core/) → {id}.json
  *
  * Flujo:
  *   wavPath → ffmpeg pipe → Float32Array 16 kHz mono
@@ -103,17 +103,17 @@ export async function analyzeWav({ wavPath, outputPath, metadata = {} }) {
   // 2. Análisis emocional y acústico
   const descriptors = await analyzeBuffer(pcm, TARGET_SR);
 
-  // 3. Enriquecer con metadata del CSV (Fase 4 base — sin Spotify)
+  // 3. Enriquecer con metadata del CSV
   const { banda = '', cancion = '' } = metadata;
 
   descriptors.filename         = deriveFilename(banda, cancion);
   descriptors.spotifyTrackName = cancion  || null;
   descriptors.spotifyArtist    = banda    || null;
-  // Campos Spotify vacíos (se rellenan en Fase 8)
+  // Campos Spotify vacíos (se rellenan con enriquecimiento Spotify)
   descriptors.spotifyAlbumArt        = null;
   descriptors.spotifyGenres          = [];
   descriptors.spotifyMatchConfidence = 0;
-  // Género vacío (Fase 8)
+  // Género vacío (se rellena con enriquecimiento Spotify)
   descriptors.genre            = '';
   descriptors.subgenre         = '';
   descriptors.genreExplanation = '';

@@ -1,6 +1,6 @@
 /**
  * pipeline/validate.js
- * Fase 6 — Validación de JSONs generados y reporte quality_{year}.json
+ * Validación de JSONs generados y reporte quality_{year}.json
  *
  * Comprueba que cada {id}.json sea parseble, tenga el formato array[1]
  * y contenga los campos numéricos clave con valores en rango.

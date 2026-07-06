@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Prueba rápida de Fase 2 — verifica que analyzeBuffer devuelve
+ * Prueba rápida de core/analyzer.js — verifica que analyzeBuffer devuelve
  * los campos clave del JSON sin errores, usando PCM sintético.
  */
 
@@ -29,7 +29,7 @@ const REQUIRED_FIELDS = [
 ];
 
 async function main() {
-  console.log('── Test Fase 2: core/analyzer.js ──\n');
+  console.log('── Test: core/analyzer.js ──\n');
 
   const pcm = makeSyntheticPCM(SR, SEC);
   console.log(`PCM sintético: ${SEC} s @ ${SR} Hz  (${pcm.length} muestras)\n`);

@@ -14,9 +14,12 @@
     "test:core": "node scripts/test-core.js",
     "test:download": "node scripts/test-download.js",
     "test:analyze": "node scripts/test-analyze.js",
+    "test:spotify": "node scripts/test-spotify.js",
     "pipeline": "node pipeline/cli.js",
     "process:all": "node pipeline/cli.js run --all",
-    "process:year": "node pipeline/cli.js run --year 2013"
+    "process:year": "node pipeline/cli.js run --year 2013",
+    "enrich": "node pipeline/cli.js enrich --all",
+    "enrich:year": "node pipeline/cli.js enrich --year 2013"
   },
   "dependencies": {
     "@tensorflow/tfjs-node": "^4.22.0",

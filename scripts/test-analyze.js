@@ -1,5 +1,5 @@
 /**
- * Prueba de Fase 4 — analiza el WAV de DE_3 y escribe el JSON.
+ * Prueba de analyze.js — analiza el WAV de DE_3 y escribe el JSON.
  * Requiere haber ejecutado antes: npm run test:download
  */
 
@@ -29,7 +29,7 @@ const REQUIRED = [
 ];
 
 async function main() {
-  console.log('── Test Fase 4: pipeline/analyze.js ──\n');
+  console.log('── Test: pipeline/analyze.js ──\n');
 
   if (!existsSync(WAV_PATH)) {
     console.error(`WAV no encontrado: ${WAV_PATH}`);

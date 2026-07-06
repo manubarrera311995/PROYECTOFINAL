@@ -1,5 +1,5 @@
 /**
- * Prueba de Fase 3 — descarga 1 canción del FEP_2013.csv
+ * Prueba de download.js — descarga 1 canción del FEP_2013.csv
  * y verifica que el WAV existe con el tamaño correcto.
  */
 
@@ -15,7 +15,7 @@ const CSV_PATH  = join(PROJECT, '..', 'audio-dna', 'FEP_2013.csv');
 const DL_DIR    = join(PROJECT, 'downloads');
 
 async function main() {
-  console.log('── Test Fase 3: pipeline/download.js ──\n');
+  console.log('── Test: pipeline/download.js ──\n');
 
   const rows = await readCsv(CSV_PATH);
   console.log(`CSV cargado: ${rows.length} canciones`);

@@ -1,6 +1,6 @@
 /**
  * core/analyzer.js
- * Fase 2 — Punto de entrada del análisis emocional batch.
+ * Punto de entrada del análisis emocional batch.
  *
  * analyzeBuffer(pcm, sampleRate) → descriptores compatibles con el timeline.
  *

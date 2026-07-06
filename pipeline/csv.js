@@ -1,6 +1,6 @@
 /**
  * pipeline/csv.js
- * Fase 3 — Lectura y parseo del CSV FEP_{year}.csv
+ * Lectura y parseo del CSV FEP_{year}.csv
  *
  * Columnas: id, banda, canción, fecha, hora_de_inicio,
  *           hora_de_finalización, escenario, país, ciudad, idioma

@@ -1,6 +1,6 @@
 /**
  * core/dsp.js
- * Fase 2 — Port del Web Worker de audio-dna/index.html
+ * Port del Web Worker de audio-dna/index.html
  *
  * Funciones puras de procesamiento de señal: FFT, banco de filtros Mel,
  * features por frame y agregación estadística.

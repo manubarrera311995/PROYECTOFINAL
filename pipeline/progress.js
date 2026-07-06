@@ -1,6 +1,6 @@
 /**
  * pipeline/progress.js
- * Fase 5 — Gestión de estado persistente en progress/{year}.json
+ * Gestión de estado persistente en progress/{year}.json
  *
  * Estados por canción:
  *   pending → downloading → downloaded → analyzing → done

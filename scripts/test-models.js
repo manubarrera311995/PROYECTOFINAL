@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Fase 1 — Verificar carga de modelos Essentia con @tensorflow/tfjs-node
+ * Verificar carga de modelos Essentia con @tensorflow/tfjs-node
  */
 
 import { existsSync } from 'node:fs';
@@ -44,7 +44,7 @@ async function loadAndInfer({ key, folder }) {
 }
 
 async function main() {
-  console.log('Validando modelos Essentia (Fase 1)...\n');
+  console.log('Validando modelos Essentia...\n');
 
   if (!existsSync(MODELS_DIR)) {
     console.error('Carpeta models/ no encontrada. Ejecuta primero: npm run setup:models\n');

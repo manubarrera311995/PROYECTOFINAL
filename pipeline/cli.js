@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * pipeline/cli.js
- * Fase 5 — CLI principal del pipeline audio-dna.
+ * CLI principal del pipeline audio-dna.
  *
  * Uso: npm run pipeline -- <comando> [opciones]
  * o:   node pipeline/cli.js <comando> [opciones]
@@ -13,7 +13,9 @@ import { resolve, join }            from 'node:path';
 import { runYear, downloadYear, analyzeYear, retryYear } from './runner.js';
 import { loadProgress, countByStatus, getIdsByStatus }  from './progress.js';
 import { validateEdition } from './validate.js';
-import { readCsv } from './csv.js';
+import { readCsv }         from './csv.js';
+import { enrichEdition, enrichStats } from './enrich.js';
+import { pingSpotify }     from './spotify.js';
 
 // ─── Ayuda ────────────────────────────────────────────────────────────────────
 
@@ -28,8 +30,9 @@ Comandos:
   download   Solo descargar WAV (sin analizar)
   analyze    Solo analizar WAV ya descargados → JSON
   retry      Reintentar ids fallidos
-  status     Ver progreso de una edición
+  status     Ver progreso  [--watch N: refresco automático cada N segundos]
   validate   Generar reporte de calidad (reports/quality_{year}.json)
+  enrich     Enriquecer JSONs con Spotify (álbum art, géneros, confidence)
 
 Opciones de alcance:
   --year    N          Procesar una edición (ej. --year 2013)
@@ -68,6 +71,11 @@ Ejemplos:
 
   # Ver progreso
   npm run pipeline -- status --year 2013
+
+  # Enriquecer con Spotify (requiere SPOTIFY_CLIENT_ID/SECRET en .env)
+  npm run pipeline -- enrich --year 2013
+  npm run pipeline -- enrich --all
+  npm run pipeline -- enrich --year 2013 --force   # reprocesar ya enriquecidos
 `.trim();
 
 // ─── Parser de argumentos ─────────────────────────────────────────────────────
@@ -172,26 +180,128 @@ async function cmdRetry(args) {
   }
 }
 
-async function cmdStatus(args) {
-  let years = resolveYears(args);
-  const progDir = resolve(args['progress-dir'] || DEFAULT_PROGRESS);
-  const csvDir  = resolve(args['csv-dir']       || DEFAULT_CSV_DIR);
-  if (!years) years = detectYearsFromCsvDir(csvDir).filter(y => existsSync(join(progDir, `${y}.json`)));
+async function renderStatus(years, progDir) {
+  const lines = [];
+  let totalDone = 0, totalAll = 0;
 
-  if (!years.length) { console.log('No hay progreso registrado aún.'); return; }
-
-  console.log('\n── Estado del pipeline ──────────────────────\n');
   for (const year of years) {
     const state  = await loadProgress(year, progDir);
     const counts = countByStatus(state);
+    const inFlight = counts.downloading + counts.downloaded + counts.analyzing;
     const bar    = progressBar(counts.done, counts.total);
-    console.log(`  ${year}  ${bar}  ${counts.done}/${counts.total} done  ${counts.failed} failed  ${counts.pending + counts.downloading + counts.downloaded + counts.analyzing} pendiente`);
+
+    lines.push(
+      `  ${year}  ${bar}  ${counts.done}/${counts.total}` +
+      `  ✓ ${counts.done}  ✗ ${counts.failed}  ⏳ ${inFlight + counts.pending}`
+    );
+
+    // Mostrar canciones activas en este momento
+    const downloading = getIdsByStatus(state, 'downloading');
+    const analyzing   = getIdsByStatus(state, 'analyzing');
+    if (downloading.length) lines.push(`         ↓ descargando: ${downloading.slice(0, 4).join(', ')}${downloading.length > 4 ? ` (+${downloading.length - 4})` : ''}`);
+    if (analyzing.length)   lines.push(`         ⚙ analizando:  ${analyzing.slice(0, 4).join(', ')}${analyzing.length > 4 ? ` (+${analyzing.length - 4})` : ''}`);
+
     if (counts.failed > 0) {
-      const ids = getIdsByStatus(state, 'failed').slice(0, 5);
-      console.log(`         ✗ fallidos: ${ids.join(', ')}${counts.failed > 5 ? ` (+${counts.failed - 5} más)` : ''}`);
+      const ids = getIdsByStatus(state, 'failed').slice(0, 4);
+      lines.push(`         ✗ fallidos: ${ids.join(', ')}${counts.failed > 4 ? ` (+${counts.failed - 4} más)` : ''}`);
     }
+
+    totalDone += counts.done;
+    totalAll  += counts.total;
   }
-  console.log();
+
+  // Barra global si hay más de una edición
+  if (years.length > 1) {
+    lines.push('');
+    lines.push(`  TOTAL  ${progressBar(totalDone, totalAll)}  ${totalDone}/${totalAll}`);
+  }
+
+  return lines.join('\n');
+}
+
+async function cmdStatus(args) {
+  let years = resolveYears(args);
+  const progDir  = resolve(args['progress-dir'] || DEFAULT_PROGRESS);
+  const csvDir   = resolve(args['csv-dir']       || DEFAULT_CSV_DIR);
+  const watchSec = args.watch === true ? 10 : (parseInt(args.watch, 10) || 0);
+
+  if (!years) years = detectYearsFromCsvDir(csvDir).filter(y => existsSync(join(progDir, `${y}.json`)));
+  if (!years.length) { console.log('No hay progreso registrado aún.'); return; }
+
+  const print = async () => {
+    const body = await renderStatus(years, progDir);
+    const time = new Date().toLocaleTimeString('es-CO');
+    const header = watchSec
+      ? `\n── Audio DNA Pipeline — Monitor ─────────────────────\n  ${time}  (refresca cada ${watchSec} s)  [Ctrl+C para salir]\n`
+      : '\n── Estado del pipeline ──────────────────────\n';
+    const footer = '\n';
+    return header + '\n' + body + footer;
+  };
+
+  if (!watchSec) {
+    process.stdout.write(await print());
+    return;
+  }
+
+  // Modo watch: limpiar pantalla y redibujar cada N segundos
+  const redraw = async () => {
+    process.stdout.write('\x1B[2J\x1B[0f'); // clear screen + cursor al inicio
+    process.stdout.write(await print());
+  };
+
+  await redraw();
+  const interval = setInterval(redraw, watchSec * 1000);
+
+  // Salir limpiamente con Ctrl+C
+  process.on('SIGINT', () => {
+    clearInterval(interval);
+    process.stdout.write('\n[Monitor detenido]\n');
+    process.exit(0);
+  });
+}
+
+async function cmdEnrich(args) {
+  let years = resolveYears(args);
+  const csvDir     = resolve(args['csv-dir']     || DEFAULT_CSV_DIR);
+  const outputBase = resolve(args['output-base'] || DEFAULT_OUTPUT_BASE);
+  const force      = !!args.force;
+
+  if (!years) years = detectYearsFromCsvDir(csvDir);
+  if (!years.length) { console.log('No se encontraron ediciones.'); return; }
+
+  // Verificar credenciales antes de empezar
+  console.log('\n── Verificando credenciales Spotify…');
+  const { ok, message } = await pingSpotify();
+  if (!ok) {
+    console.error(`\n✗ ${message}`);
+    console.error('  Define SPOTIFY_CLIENT_ID y SPOTIFY_CLIENT_SECRET en .env\n');
+    process.exit(1);
+  }
+  console.log('  ✓ Credenciales OK\n');
+
+  for (const year of years) {
+    const dataDir = args['output-dir']
+      ? resolve(args['output-dir'])
+      : join(outputBase, `DATA_${year}`);
+
+    if (!existsSync(dataDir)) {
+      console.warn(`  [${year}] Directorio no encontrado: ${dataDir} — saltando`);
+      continue;
+    }
+
+    // Mostrar estadísticas previas
+    const stats = await enrichStats(dataDir);
+    if (stats) {
+      console.log(`[${year}] Pendientes: ${stats.pending}/${stats.total}  Ya enriquecidos: ${stats.enriched}`);
+    }
+
+    await enrichEdition({
+      year,
+      dataDir,
+      force,
+      overrideMoods: !!args['override-moods'],
+    });
+  }
 }
 
 async function cmdValidate(args) {
@@ -265,6 +375,7 @@ async function main() {
       case 'retry':    await cmdRetry(args);            break;
       case 'status':   await cmdStatus(args);           break;
       case 'validate': await cmdValidate(args);         break;
+      case 'enrich':   await cmdEnrich(args);            break;
       default:
         console.error(`Comando desconocido: "${command}"\n`);
         console.log(HELP);

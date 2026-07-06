@@ -1,6 +1,6 @@
 /**
  * core/calibration.js
- * Fase 2 — Port desde audio-dna/index.html
+ * Port desde audio-dna/index.html
  *
  * Heurísticas de mood (DSP), calibración de scores Essentia con DSP,
  * cálculo de descriptores compuestos (engagement, nostalgia, oscuridad)
@@ -190,7 +190,7 @@ export function buildDescriptors(acoustic, mood, composite, moodSource) {
     energy,
     tempo,
 
-    // Spotify (vacíos en Fase 4 base; Fase 8 los rellena)
+    // Spotify (vacíos por defecto; se rellenan con enriquecimiento Spotify)
     instrumentalness: null,
     liveness:         null,
     speechiness:      null,
@@ -207,11 +207,11 @@ export function buildDescriptors(acoustic, mood, composite, moodSource) {
     midFreqRatio:     acoustic.midFreqRatio  || 0,
     highFreqRatio:    acoustic.highFreqRatio || 0,
 
-    // Género (vacío en Fase 4 base; Fase 8 Spotify lo rellena)
+    // Género (vacío por defecto; se rellena con enriquecimiento Spotify)
     genre:    '',
     subgenre: '',
 
-    // Metadata Spotify (vacía en Fase 4 base)
+    // Metadata Spotify (vacía por defecto)
     spotifyTrackName:       null,
     spotifyArtist:          null,
     spotifyAlbumArt:        null,

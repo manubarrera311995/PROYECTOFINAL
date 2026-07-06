@@ -1,11 +1,11 @@
 /**
  * pipeline/runner.js
- * Fase 5 / 6 — Orquestación de descarga + análisis con workers concurrentes.
+ * Orquestación de descarga + análisis con workers concurrentes.
  *
  * Modelo de concurrencia:
  *   Queue de ids → [N download workers] → analyzeQueue → [M analyze workers] → done
  *
- * Con workers=1 el comportamiento es secuencial (igual que Fase 5).
+ * Con workers=1 el comportamiento es secuencial.
  * Con workers>1, las descargas se solapan entre sí y con los análisis:
  *   mientras un WAV se analiza, otros se están descargando en paralelo.
  */
@@ -17,6 +17,7 @@ import { readCsv }         from './csv.js';
 import { downloadTrack }   from './download.js';
 import { analyzeWav }      from './analyze.js';
 import { validateEdition } from './validate.js';
+import { enrichEdition }   from './enrich.js';
 import {
   loadProgress, saveProgress,
   updateId, initIds,
@@ -240,6 +241,16 @@ export async function runYear(opts) {
       reportDir: resolve(o.reportsDir),
       csvPath,
     }).catch(err => console.warn(`[validate] No se pudo generar reporte: ${err.message}`));
+  }
+
+  // Enriquecimiento Spotify opcional (activar con SPOTIFY_ENRICH=true en .env)
+  if (o.mode !== 'download' && process.env.SPOTIFY_ENRICH === 'true') {
+    await enrichEdition({
+      year,
+      dataDir:       outputDir,
+      force:         false,
+      overrideMoods: process.env.SPOTIFY_OVERRIDE_MOODS === 'true',
+    }).catch(err => console.warn(`[enrich] Error Spotify: ${err.message}`));
   }
 
   return final;
