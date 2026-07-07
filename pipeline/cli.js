@@ -134,8 +134,9 @@ function buildYearOpts(year, args) {
     ? resolve(args['output-dir'])
     : join(outputBase, `DATA_${year}`);
 
-  const skipExisting    = args['no-skip-existing'] ? false : true;
-  const deleteWav       = !!args['delete-wav-after'];
+  const skipExisting    = args['no-skip-existing'] ? false
+                        : (process.env.SKIP_EXISTING === 'false' ? false : true);
+  const deleteWav       = !!args['delete-wav-after'] || process.env.DELETE_WAV_AFTER === 'true';
   const downloadWorkers = parseInt(args['download-workers'] || process.env.DOWNLOAD_WORKERS || '1', 10);
   const analyzeWorkers  = parseInt(args['analyze-workers']  || process.env.ANALYZE_WORKERS  || '1', 10);
 

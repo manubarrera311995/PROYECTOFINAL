@@ -102,6 +102,20 @@ export async function runYear(opts) {
   // 2. Cargar progreso
   const state = await loadProgress(year, o.progressDir);
   initIds(state, rows);
+
+  // Si el pipeline se detuvo abruptamente, las tareas que estaban en curso
+  // (downloading/downloaded/analyzing) nunca terminarán — se devuelven a
+  // pending para que se reprocesen en esta ejecución.
+  const INCOMPLETE = ['downloading', 'downloaded', 'analyzing'];
+  let resetCount = 0;
+  for (const [id, entry] of Object.entries(state.ids)) {
+    if (INCOMPLETE.includes(entry.status)) {
+      state.ids[id] = { status: 'pending' };
+      resetCount++;
+    }
+  }
+  if (resetCount > 0) console.log(`[${year}] ↺ ${resetCount} tarea(s) incompletas reseteadas a pendiente\n`);
+
   await saveProgress(state, year, o.progressDir);
 
   // 3. Determinar queue
@@ -274,7 +288,7 @@ export async function retryYear(opts) {
   for (const id of failedIds) {
     updateId(state, id, { status: 'pending', error: undefined, retrying: true });
   }
-  await saveProgress(opts.year, progDir, state);
+  await saveProgress(state, opts.year, progDir);
 
   return runYear({ ...opts, mode: 'run', onlyIds: failedIds });
 }

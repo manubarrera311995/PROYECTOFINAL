@@ -28,12 +28,30 @@ const DEFAULT_RETRY_WAIT = 5; // segundos entre reintentos
 //   YTDLP_COOKIES_FILE=./cookies.txt    (archivo exportado manualmente)
 function buildCookieArgs() {
   if (process.env.YTDLP_COOKIES_FILE) {
+    if (!existsSync(process.env.YTDLP_COOKIES_FILE)) {
+      console.warn(`⚠  YTDLP_COOKIES_FILE apunta a un archivo que no existe: ${process.env.YTDLP_COOKIES_FILE}`);
+      console.warn('   Las descargas continuarán sin cookies.\n');
+      return [];
+    }
     return ['--cookies', process.env.YTDLP_COOKIES_FILE];
   }
   if (process.env.YTDLP_COOKIES_FROM_BROWSER) {
     return ['--cookies-from-browser', process.env.YTDLP_COOKIES_FROM_BROWSER];
   }
   return [];
+}
+
+// ─── Throttling anti-rate-limit ───────────────────────────────────────────────
+// YTDLP_SLEEP_REQUESTS: pausa (seg) entre peticiones HTTP internas de yt-dlp (default 2)
+// YTDLP_SLEEP_INTERVAL: pausa (seg) antes de iniciar cada descarga           (default 3)
+// YTDLP_SLEEP_MAX:      límite superior aleatorio para --max-sleep-interval   (default igual a SLEEP_INTERVAL)
+function buildSleepArgs() {
+  const req = parseFloat(process.env.YTDLP_SLEEP_REQUESTS ?? '2');
+  const min = parseFloat(process.env.YTDLP_SLEEP_INTERVAL ?? '3');
+  const max = parseFloat(process.env.YTDLP_SLEEP_MAX      ?? String(min));
+  const args = ['--sleep-requests', String(req), '--sleep-interval', String(min)];
+  if (max > min) args.push('--max-sleep-interval', String(max));
+  return args;
 }
 
 // ─── Utilidades ───────────────────────────────────────────────────────────────
@@ -138,11 +156,13 @@ export async function downloadTrack({
 
 async function doDownload({ ytCmd, ytArgs, searchQuery, wavPath, id }) {
   const cookieArgs = buildCookieArgs();
+  const sleepArgs  = buildSleepArgs();
 
   // Paso 1: obtener metadatos del video (título, duración) sin descargar
   const metaArgs = [
     ...ytArgs,
     ...cookieArgs,
+    ...sleepArgs,
     '--print', '%(title)s\n%(duration)s',
     '--no-playlist',
     '--default-search', 'ytsearch',
@@ -164,6 +184,7 @@ async function doDownload({ ytCmd, ytArgs, searchQuery, wavPath, id }) {
   const dlArgs = [
     ...ytArgs,
     ...cookieArgs,
+    ...sleepArgs,
     '--extract-audio',
     '--audio-format',    'wav',
     '--audio-quality',   '0',           // mejor calidad antes de convertir

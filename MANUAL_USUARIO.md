@@ -295,8 +295,14 @@ Este paso agrega portadas de álbum, géneros musicales y metadatos adicionales 
 
 1. Ve a [developer.spotify.com](https://developer.spotify.com) e inicia sesión con tu cuenta de Spotify.
 2. Haz clic en **"Create app"**.
-3. Dale un nombre cualquiera (ej. "AudioDNA"), agrega una descripción breve, y en "Redirect URIs" escribe `http://localhost`.
-4. Copia el **Client ID** y el **Client Secret** que aparecen en la app.
+3. Completa el formulario:
+   - **App name:** cualquier nombre (ej. `AudioDNA`)
+   - **App description:** cualquier descripción breve (ej. `Pipeline de análisis musical`)
+   - **Redirect URIs:** escribe `https://localhost` y haz clic en **Add**
+     > Usa `https://` (con s). Spotify ya no acepta `http://localhost`. Esta URL nunca se usa realmente — el pipeline se conecta con Client Credentials (sin login de usuario) y no necesita redireccionamiento.
+   - **Which API/SDKs are you planning to use?** — marca solo **Web API**
+4. Acepta los términos y haz clic en **Save**.
+5. En la página de tu app, haz clic en **Settings** y copia el **Client ID** y el **Client Secret**.
 
 ### Configurar en `.env`
 
