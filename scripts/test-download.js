@@ -11,7 +11,7 @@ import { downloadTrack }        from '../pipeline/download.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PROJECT   = join(__dirname, '..');
-const CSV_PATH  = join(PROJECT, '..', 'audio-dna', 'FEP_2013.csv');
+const CSV_PATH  = join(PROJECT, 'data', 'csv', 'FEP_2013.csv');
 const DL_DIR    = join(PROJECT, 'downloads');
 
 async function main() {

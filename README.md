@@ -6,7 +6,7 @@ Pipeline batch para automatizar el procesamiento de canciones del **Festival Est
 FEP_{year}.csv → descarga WAV (yt-dlp) → análisis emocional (Essentia + DSP) → DATA_{year}/{id}.json
 ```
 
-Genera JSONs compatibles con el timeline de `audio-dna` sin intervención manual.
+Genera JSONs con descriptores emocionales por canción sin intervención manual.
 
 ---
 
@@ -26,14 +26,11 @@ Genera JSONs compatibles con el timeline de `audio-dna` sin intervención manual
 # 1. Dependencias Node
 npm install
 
-# 2. Copiar modelos Essentia desde audio-dna/
-npm run setup:models
-
-# 3. Configurar entorno
+# 2. Configurar entorno
 cp .env.example .env
-# Editar .env si las rutas difieren del layout por defecto
+# Editar .env con las rutas a tus CSV y carpeta de salida
 
-# 4. Verificar que todo funciona
+# 3. Verificar que todo funciona
 npm run test:models   # → 4/4 modelos OK
 npm run test:core     # → analyzeBuffer OK
 ```
@@ -45,10 +42,10 @@ npm run test:core     # → analyzeBuffer OK
 ```bash
 # Procesar UNA edición
 npm run pipeline -- run --year 2013 \
-  --csv ../audio-dna/FEP_2013.csv \
-  --output-dir ../audio-dna/DATA_2013
+  --csv ./data/csv/FEP_2013.csv \
+  --output-dir ./data/output/DATA_2013
 
-# Procesar TODAS las ediciones (rutas fijas del .env)
+# Procesar TODAS las ediciones (rutas del .env)
 npm run process:all
 
 # Ver progreso
@@ -77,9 +74,9 @@ npm run pipeline -- run [alcance] [rutas] [opciones]
 
 # Rutas
 --csv PATH                CSV de entrada (para --year)
---csv-dir PATH            Carpeta con todos los FEP_*.csv  [default: ../audio-dna]
+--csv-dir PATH            Carpeta con todos los FEP_*.csv  [default: CSV_DIR en .env o ./data/csv]
 --output-dir PATH         Carpeta de salida JSON (para --year)
---output-base PATH        Base para DATA_{year}/           [default: ../audio-dna]
+--output-base PATH        Base para DATA_{year}/           [default: OUTPUT_BASE en .env o ./data/output]
 --downloads-dir PATH      WAVs temporales                  [default: ./downloads]
 --progress-dir PATH       Estado de progreso               [default: ./progress]
 
@@ -93,13 +90,13 @@ npm run pipeline -- run [alcance] [rutas] [opciones]
 ### `download` — solo descargar WAV
 
 ```bash
-npm run pipeline -- download --year 2013 --csv ../audio-dna/FEP_2013.csv
+npm run pipeline -- download --year 2013 --csv ./data/csv/FEP_2013.csv
 ```
 
 ### `analyze` — solo analizar WAVs ya descargados
 
 ```bash
-npm run pipeline -- analyze --year 2013 --output-dir ../audio-dna/DATA_2013
+npm run pipeline -- analyze --year 2013 --output-dir ./data/output/DATA_2013
 ```
 
 ### `retry` — reintentar fallidos
@@ -187,10 +184,10 @@ PROYECTOFINAL/
 
 | Alcance | Sin optimizar (1 worker) | Con workers (dl:4, an:2) |
 |---|---|---|
-| 1 edición (~262 canciones) | ~2–4 días | **~12–24 h** |
-| 15 ediciones (~15.000 canciones) | ~1–2 meses | **~2–3 semanas** |
+| 1 edición (~262 canciones) | ~4–8 h | **~1–3 h** |
+| 15 ediciones (~3.900 canciones) | ~2–3 días | **~1–2 días** |
 
-El cuello de botella es la **descarga de YouTube** (~70% del tiempo). Aumentar `--download-workers` es la optimización más efectiva.
+El tiempo real depende de la velocidad de internet y del procesador. El cuello de botella es la **descarga de YouTube** (~70% del tiempo). Aumentar `--download-workers` es la optimización más efectiva.
 
 > **Nota:** YouTube puede bloquear IPs con muchas peticiones simultáneas.
 > Con 3–4 workers y los reintentos automáticos incluidos, el pipeline se recupera solo de la mayoría de bloqueos transitorios.
@@ -202,8 +199,8 @@ El cuello de botella es la **descarga de YouTube** (~70% del tiempo). Aumentar `
 Ver `.env.example` para la lista completa. Las más importantes:
 
 ```env
-CSV_DIR=../audio-dna
-OUTPUT_BASE=../audio-dna
+CSV_DIR=./data/csv
+OUTPUT_BASE=./data/output
 DOWNLOAD_WORKERS=4
 ANALYZE_WORKERS=2
 DELETE_WAV_AFTER=false

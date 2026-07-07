@@ -1,6 +1,6 @@
 /**
  * core/calibration.js
- * Port desde audio-dna/index.html
+ * Motor de calibración y heurísticas de mood
  *
  * Heurísticas de mood (DSP), calibración de scores Essentia con DSP,
  * cálculo de descriptores compuestos (engagement, nostalgia, oscuridad)

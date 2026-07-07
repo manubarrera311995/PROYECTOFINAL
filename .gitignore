@@ -6,9 +6,6 @@ downloads/
 *.wav
 *.mp3
 
-# Modelos copiados desde audio-dna (npm run setup:models)
-models/
-
 # Estado de ejecución local
 progress/
 reports/

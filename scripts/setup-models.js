@@ -1,17 +1,16 @@
 #!/usr/bin/env node
 /**
- * Copia models/ desde el repo hermano audio-dna.
- * Ejecutar una vez tras clonar: npm run setup:models
+ * Verifica que los modelos Essentia estén presentes en models/.
+ * Los modelos vienen incluidos en el repositorio; este script
+ * confirma que la carpeta no fue borrada ni quedó vacía.
  */
 
-import { cpSync, existsSync, mkdirSync, readdirSync } from 'node:fs';
-import { dirname, join, resolve } from 'node:path';
+import { existsSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const ROOT = join(__dirname, '..');
-const SOURCE = resolve(ROOT, '../audio-dna/models');
-const TARGET = join(ROOT, 'models');
+const MODELS_DIR = join(__dirname, '..', 'models');
 
 const REQUIRED = [
   'mood_happy-musicnn',
@@ -21,33 +20,17 @@ const REQUIRED = [
 ];
 
 function main() {
-  if (!existsSync(SOURCE)) {
-    console.error(`No se encontró la carpeta de modelos en:\n  ${SOURCE}`);
-    console.error('Asegúrate de tener audio-dna como repo hermano (../audio-dna).');
-    process.exit(1);
-  }
+  const missing = REQUIRED.filter(name => !existsSync(join(MODELS_DIR, name)));
 
-  mkdirSync(TARGET, { recursive: true });
-
-  const entries = readdirSync(SOURCE, { withFileTypes: true });
-  let copied = 0;
-
-  for (const entry of entries) {
-    if (!entry.isDirectory()) continue;
-    const src = join(SOURCE, entry.name);
-    const dst = join(TARGET, entry.name);
-    cpSync(src, dst, { recursive: true, force: true });
-    copied++;
-    console.log(`  ✓ ${entry.name}`);
-  }
-
-  const missing = REQUIRED.filter((name) => !existsSync(join(TARGET, name)));
   if (missing.length) {
-    console.error('\nFaltan modelos requeridos:', missing.join(', '));
+    console.error('\n✗ Faltan modelos en la carpeta models/:');
+    missing.forEach(m => console.error(`    - ${m}`));
+    console.error('\n  Asegúrate de que la carpeta models/ no fue borrada.');
+    console.error('  Si clonaste el repositorio, verifica que los archivos se descargaron correctamente.\n');
     process.exit(1);
   }
 
-  console.log(`\nListo: ${copied} carpetas copiadas a models/`);
+  console.log(`\n✓ Todos los modelos están presentes (${REQUIRED.length}/${REQUIRED.length})\n`);
 }
 
 main();

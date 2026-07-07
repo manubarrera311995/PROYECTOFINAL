@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * pipeline/cli.js
- * CLI principal del pipeline audio-dna.
+ * CLI principal del Audio DNA Pipeline.
  *
  * Uso: npm run pipeline -- <comando> [opciones]
  * o:   node pipeline/cli.js <comando> [opciones]
@@ -20,7 +20,7 @@ import { pingSpotify }     from './spotify.js';
 // ─── Ayuda ────────────────────────────────────────────────────────────────────
 
 const HELP = `
-audio-dna-pipeline — CLI
+Audio DNA Pipeline — CLI
 
 Uso:
   npm run pipeline -- <comando> [opciones]
@@ -41,9 +41,9 @@ Opciones de alcance:
 
 Opciones de rutas:
   --csv         PATH   CSV de una edición (para --year)
-  --csv-dir     PATH   Carpeta con todos los FEP_*.csv (default: ../audio-dna)
+  --csv-dir     PATH   Carpeta con todos los FEP_*.csv (default: CSV_DIR en .env o ./data/csv)
   --output-dir  PATH   Carpeta de salida JSON de una edición (para --year)
-  --output-base PATH   Carpeta base; genera DATA_{year}/ por edición (default: ../audio-dna)
+  --output-base PATH   Carpeta base; genera DATA_{year}/ por edición (default: OUTPUT_BASE en .env o ./data/output)
   --downloads-dir PATH Carpeta de WAVs (default: ./downloads)
   --progress-dir PATH  Carpeta de progreso (default: ./progress)
 
@@ -54,16 +54,15 @@ Opciones de comportamiento:
   --failed-only        (solo retry) Reintentar solo los fallidos
 
 Ejemplos:
-  # Una edición
+  # Una edición con rutas explícitas
   npm run pipeline -- run --year 2013 \\
-    --csv ../audio-dna/FEP_2013.csv \\
-    --output-dir ../audio-dna/DATA_2013
+    --csv ./data/csv/FEP_2013.csv \\
+    --output-dir ./data/output/DATA_2013
 
-  # Todas las ediciones
-  npm run pipeline -- run --all \\
-    --csv-dir ../audio-dna --output-base ../audio-dna
+  # Todas las ediciones (usa CSV_DIR y OUTPUT_BASE del .env)
+  npm run pipeline -- run --all
 
-  # Atajo con rutas fijas
+  # Atajo con rutas fijas del .env
   npm run process:all
 
   # Reintentar fallidos de 2013
@@ -109,8 +108,8 @@ function resolveYears(args) {
   return null;
 }
 
-const DEFAULT_CSV_DIR     = resolve(process.env.CSV_DIR     || join('..', 'audio-dna'));
-const DEFAULT_OUTPUT_BASE = resolve(process.env.OUTPUT_BASE || join('..', 'audio-dna'));
+const DEFAULT_CSV_DIR     = resolve(process.env.CSV_DIR     || join('data', 'csv'));
+const DEFAULT_OUTPUT_BASE = resolve(process.env.OUTPUT_BASE || join('data', 'output'));
 const DEFAULT_DL_DIR      = resolve(process.env.DOWNLOADS_DIR || 'downloads');
 const DEFAULT_PROGRESS    = resolve(process.env.PROGRESS_DIR  || 'progress');
 

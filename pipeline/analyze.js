@@ -122,7 +122,7 @@ export async function analyzeWav({ wavPath, outputPath, metadata = {} }) {
   // 4. Asegurar carpeta de salida y escribir JSON
   await mkdir(dirname(outputPath), { recursive: true });
 
-  // Formato: array de un elemento — compatible con el timeline de audio-dna
+  // Formato: array de un elemento
   const json = JSON.stringify([descriptors], null, 2);
   await writeFile(outputPath, json, 'utf8');
 

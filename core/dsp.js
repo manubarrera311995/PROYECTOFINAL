@@ -1,6 +1,6 @@
 /**
  * core/dsp.js
- * Port del Web Worker de audio-dna/index.html
+ * Funciones de procesamiento de señal (DSP)
  *
  * Funciones puras de procesamiento de señal: FFT, banco de filtros Mel,
  * features por frame y agregación estadística.
