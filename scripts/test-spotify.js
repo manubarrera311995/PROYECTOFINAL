@@ -31,8 +31,13 @@ async function main() {
   console.log(`\n2. Buscando: "${TEST_ARTIST} – ${TEST_TRACK}"…`);
   const result = await enrichTrack(TEST_ARTIST, TEST_TRACK);
 
-  if (!result) {
+  if (result.status === 'not_found') {
     console.warn('   – No se encontró el track de prueba (puede ser problema de región)');
+  } else if (result.status === 'candidate') {
+    console.warn(`   ⚠ Solo un candidato dudoso (${result.candidate.combinedScore}%, motivo: ${result.reason})`);
+    console.log(`     Track:    ${result.candidate.spotifyTrackName}`);
+    console.log(`     Artista:  ${result.candidate.spotifyArtist}`);
+    console.log(`     Título score: ${result.candidate.titleScore}  |  Artista score: ${result.candidate.artistScore}`);
   } else {
     console.log(`   ✓ Encontrado con confianza ${result.spotifyMatchConfidence}%`);
     console.log(`     Track:   ${result.spotifyTrackName}`);

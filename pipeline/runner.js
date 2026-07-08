@@ -264,6 +264,7 @@ export async function runYear(opts) {
       dataDir:       outputDir,
       force:         false,
       overrideMoods: process.env.SPOTIFY_OVERRIDE_MOODS === 'true',
+      reportDir:     resolve(o.reportsDir),
     }).catch(err => console.warn(`[enrich] Error Spotify: ${err.message}`));
   }
 

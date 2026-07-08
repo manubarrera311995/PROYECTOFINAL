@@ -103,6 +103,34 @@ yt-dlp --version
 > brew install python && pip3 install yt-dlp
 > ```
 
+### 1.5 Firefox + Deno (necesarios para descargar canciones con restricción de edad)
+
+Algunos videos de YouTube están marcados como "solo para mayores de edad" (contenido con lenguaje fuerte, temática adulta, etc.). Para descargarlos, yt-dlp necesita dos cosas: (1) que le pases una sesión de YouTube donde hayas iniciado sesión, y (2) un motor de JavaScript para resolver un desafío anti-bot que YouTube exige desde 2025. Sin esto, esas canciones específicas fallarán con un error de "Sign in to confirm your age".
+
+**a) Instala Firefox** (si no lo tienes ya):
+
+```bash
+brew install --cask firefox
+```
+
+Abre Firefox e **inicia sesión con cualquier cuenta de Google/YouTube** (no importa cuál, no necesita ser una cuenta especial). Déjalo con la sesión iniciada — el pipeline lee esas cookies automáticamente en cada descarga, no necesitas exportar nada a mano.
+
+> **¿Por qué Firefox y no Safari o Chrome?** Ya lo intentamos con ambos: Safari requiere permisos de Llavero (Keychain) que interrumpen la descarga pidiendo contraseña, y Chrome desde 2024 cifra sus cookies de una forma que herramientas externas como yt-dlp no pueden leer de forma confiable. Firefox no tiene ninguno de los dos problemas y es la opción que recomienda oficialmente el propio proyecto yt-dlp.
+
+**b) Instala Deno** (motor de JavaScript, resuelve el desafío anti-bot de YouTube):
+
+```bash
+brew install deno
+```
+
+Verifica:
+
+```bash
+deno --version   # debe mostrar 2.3.0 o superior
+```
+
+No necesitas configurar nada más: el pipeline detecta a Deno automáticamente si está instalado. La primera vez que se descargue una canción con restricción de edad, yt-dlp bajará un pequeño script "solucionador" desde GitHub y lo guardará en caché (necesita internet solo esa primera vez).
+
 ---
 
 ## Paso 2 — Preparar el proyecto
@@ -148,6 +176,10 @@ ANALYZE_WORKERS=2
 
 # ── Comportamiento ────────────────────────────────────────────
 DELETE_WAV_AFTER=false
+
+# ── Cookies YouTube (videos con restricción de edad) ──────────
+# Requiere haber iniciado sesión en Firefox (ver Paso 1.5)
+YTDLP_COOKIES_FROM_BROWSER=firefox
 
 # ── Spotify (opcional) ───────────────────────────────────────
 SPOTIFY_CLIENT_ID=
@@ -317,6 +349,24 @@ SPOTIFY_CLIENT_SECRET=pega_aqui_tu_client_secret
 npm run pipeline -- enrich --year 2013
 ```
 
+### Control de calidad del match
+
+Para evitar guardar datos de la canción equivocada (ej. covers en vivo que Spotify
+confunde con otra canción del mismo artista), cada track puede terminar en uno de
+cuatro resultados:
+
+- **Enriquecido** — coincidencia de alta confianza; se escriben todos los campos Spotify.
+- **Candidato dudoso** — hubo un resultado pero no pasó los umbrales de confianza
+  (título o artista no coinciden lo suficiente, o la duración no cuadra). No se
+  sobreescriben los campos principales; el candidato queda guardado en
+  `spotifySearchCandidate` dentro del JSON para que lo revises a mano.
+- **Cover/en vivo omitido** — el título contiene "(cover)", "(Live)", "(En Vivo)",
+  etc.; se omite la búsqueda porque casi nunca existe en Spotify bajo ese artista.
+- **No encontrado** — Spotify no devolvió nada usable.
+
+Al terminar, se genera `reports/spotify_review_{year}.json` con el detalle de los
+candidatos dudosos y los covers omitidos, para auditarlos fácilmente.
+
 ---
 
 ## Flujo completo de referencia
@@ -386,15 +436,32 @@ brew install yt-dlp
 brew install ffmpeg
 ```
 
-### YouTube bloquea las descargas
+### "command not found: deno"
+```bash
+brew install deno
+```
+
+### YouTube bloquea las descargas (rate-limit genérico)
 YouTube puede bloquear temporalmente la IP con muchas descargas simultáneas. Soluciones:
 1. Reduce `DOWNLOAD_WORKERS` a `2` en `.env`.
 2. Espera 30 minutos y vuelve a ejecutar (el pipeline retoma donde quedó).
-3. Usa cookies de tu navegador para las descargas. Agrega esto en `.env`:
-   ```env
-   YTDLP_COOKIES_FROM_BROWSER=safari
+3. Aumenta las pausas `YTDLP_SLEEP_REQUESTS` / `YTDLP_SLEEP_INTERVAL` en `.env`.
+
+### "Sign in to confirm your age" / "Sign in to confirm you're not a bot"
+Este es un error distinto al de arriba — pasa con canciones específicas que YouTube marcó como restringidas, no con todas. Necesitas la configuración del **Paso 1.5**:
+
+1. Verifica que iniciaste sesión con una cuenta de Google en Firefox.
+2. Verifica que `.env` tiene `YTDLP_COOKIES_FROM_BROWSER=firefox`.
+3. Verifica que Deno está instalado: `deno --version`.
+4. Si sigue fallando, cierra Firefox por completo y ábrelo de nuevo para refrescar la sesión, luego reintenta con:
+   ```bash
+   npm run pipeline -- retry --year 2013
    ```
-   Valores posibles: `safari`, `chrome`, `firefox`.
+
+> **Evita usar `chrome` o `safari`** en `YTDLP_COOKIES_FROM_BROWSER` — en pruebas fallaron por bloqueos de permisos (Safari) o cifrado incompatible (Chrome). Firefox es la única opción que probamos que funciona de forma consistente.
+
+### "Could not copy chrome cookie database" o "Failed to decrypt with DPAPI/keychain"
+Estás usando `chrome` o `safari` en `YTDLP_COOKIES_FROM_BROWSER`. Cambia a `firefox` como se indica arriba — ver el Paso 1.5 para instalarlo y loguearte.
 
 ### El Mac se pone lento durante el análisis
 Cada worker de análisis consume ~200 MB de RAM. Reduce a:

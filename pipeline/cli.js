@@ -300,6 +300,7 @@ async function cmdEnrich(args) {
       dataDir,
       force,
       overrideMoods: !!args['override-moods'],
+      reportDir:     resolve('reports'),
     });
   }
 }

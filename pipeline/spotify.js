@@ -94,6 +94,37 @@ function score(expected, actual) {
   return Math.round((common / total) * 70);
 }
 
+// ─── Umbrales de aceptación ───────────────────────────────────────────────────
+//
+// bestScore combinado (60% título + 40% artista) ya no es suficiente por sí solo:
+// un título exacto con artista completamente distinto (o viceversa) puede dar un
+// combinado engañosamente alto. Por eso exigimos un mínimo en CADA componente.
+
+const MIN_TITLE_SCORE       = 55; // score de título mínimo para aceptar automáticamente
+const MIN_ARTIST_SCORE      = 55; // score de artista mínimo para aceptar automáticamente
+const CANDIDATE_MIN_SCORE   = 30; // por debajo de esto, ni siquiera vale la pena guardarlo como candidato
+const DURATION_TOLERANCE_PCT = 15; // % de diferencia de duración tolerado antes de desconfiar del match
+
+// ─── Detección de covers / versiones en vivo ─────────────────────────────────
+//
+// Estas versiones casi nunca existen en Spotify bajo el artista que las tocó
+// (ej. "Café Tacvba - Déjate Caer (Los Tres Cover)"), así que buscarlas termina
+// devolviendo la canción equivocada del artista real. Mejor omitir la búsqueda.
+
+const NON_ORIGINAL_PATTERN = /\((?:[^)]*\b(?:cover|live|en vivo|acoustic|ac[uú]stico|remix|versi[oó]n|tributo|tribute|karaoke)\b[^)]*)\)/i;
+
+/**
+ * Detecta si un título de canción parece ser un cover, versión en vivo,
+ * acústica, remix, etc. — casos donde buscar en Spotify por el artista
+ * original suele devolver un match falso.
+ *
+ * @param {string} trackName
+ * @returns {boolean}
+ */
+export function isLikelyNonOriginalVersion(trackName = '') {
+  return NON_ORIGINAL_PATTERN.test(trackName);
+}
+
 // ─── Derivación de género ─────────────────────────────────────────────────────
 
 const GENRE_RULES = [
@@ -143,50 +174,115 @@ export function deriveGenre(spotifyGenres = []) {
 // ─── API pública ──────────────────────────────────────────────────────────────
 
 /**
- * Busca una canción en Spotify y devuelve los campos de enriquecimiento.
+ * Busca una canción en Spotify y evalúa la confianza del match.
+ *
+ * A diferencia de la versión anterior, el resultado tiene tres estados
+ * posibles en vez de simplemente encontrado/no encontrado:
+ *
+ *   - 'accepted'  → título Y artista pasan su umbral mínimo por separado
+ *                   (y la duración, si se puede comparar, también coincide).
+ *                   Trae los campos listos para escribir en el JSON.
+ *   - 'candidate' → hubo un resultado con score razonable pero que no pasa
+ *                   los umbrales de aceptación automática (ej. título exacto
+ *                   con artista distinto, como en covers). Se devuelve para
+ *                   guardarlo como candidato a revisión manual, sin escribir
+ *                   sobre los campos principales.
+ *   - 'not_found' → no hay ningún resultado que valga la pena considerar.
  *
  * @param {string} artist
  * @param {string} trackName
- * @returns {Promise<object|null>}  null si no se encontró con confianza suficiente
+ * @param {object} [opts]
+ * @param {number|null} [opts.expectedDurationSec]  Duración real del audio analizado,
+ *                                                    para descartar matches de canciones distintas.
+ * @returns {Promise<object>}  { status, ...detalles }
  */
-export async function enrichTrack(artist, trackName) {
+export async function enrichTrack(artist, trackName, opts = {}) {
+  const { expectedDurationSec = null } = opts;
+
   const q    = encodeURIComponent(`${artist} ${trackName}`);
   const data = await get(`/search?q=${q}&type=track&limit=5&market=US`);
 
   const items = data?.tracks?.items ?? [];
-  if (!items.length) return null;
+  if (!items.length) return { status: 'not_found' };
 
-  // Elegir el resultado con mayor combined score
-  let best = null, bestScore = 0;
+  // Elegir el resultado con mayor combined score, comparando el artista
+  // esperado contra TODOS los artistas del track (no solo el primero) —
+  // así un featuring en distinto orden no arruina el score.
+  let best = null, bestCombined = -1, bestTitleScore = 0, bestArtistScore = 0, bestArtistIdx = 0;
 
   for (const item of items) {
     const ts = score(trackName, item.name);
-    const as = score(artist,    item.artists[0]?.name ?? '');
+    const artistScores = (item.artists || []).map(a => score(artist, a?.name ?? ''));
+    const as = artistScores.length ? Math.max(...artistScores) : 0;
     const combined = Math.round(ts * 0.6 + as * 0.4);
-    if (combined > bestScore) { bestScore = combined; best = item; }
+
+    if (combined > bestCombined) {
+      bestCombined    = combined;
+      best            = item;
+      bestTitleScore  = ts;
+      bestArtistScore = as;
+      bestArtistIdx   = artistScores.indexOf(as);
+    }
   }
 
-  if (!best || bestScore < 25) return null;
+  if (!best || bestCombined < CANDIDATE_MIN_SCORE) return { status: 'not_found' };
 
-  // Obtener géneros del artista principal (request separado)
+  // Validar duración contra el audio real analizado (si la tenemos)
+  let durationDiffPct = null;
+  if (expectedDurationSec && best.duration_ms) {
+    durationDiffPct = Math.round(
+      (Math.abs(best.duration_ms / 1000 - expectedDurationSec) / expectedDurationSec) * 100
+    );
+  }
+  const durationOk = durationDiffPct === null || durationDiffPct <= DURATION_TOLERANCE_PCT;
+
+  const albumArt  = best.album?.images?.[0]?.url ?? null;
+  const artistObj = best.artists?.[bestArtistIdx] ?? best.artists?.[0];
+
+  const accepted = bestTitleScore >= MIN_TITLE_SCORE && bestArtistScore >= MIN_ARTIST_SCORE && durationOk;
+
+  if (!accepted) {
+    const reason = bestTitleScore < MIN_TITLE_SCORE  ? 'titulo_no_coincide'
+                 : bestArtistScore < MIN_ARTIST_SCORE ? 'artista_no_coincide'
+                 :                                       'duracion_no_coincide';
+
+    return {
+      status: 'candidate',
+      reason,
+      candidate: {
+        spotifyTrackName: best.name,
+        spotifyArtist:    best.artists.map(a => a.name).join(', '),
+        spotifyAlbumArt:  albumArt,
+        spotifyId:        best.id,
+        titleScore:       bestTitleScore,
+        artistScore:      bestArtistScore,
+        combinedScore:    bestCombined,
+        durationDiffPct,
+      },
+    };
+  }
+
+  // Géneros del artista que realmente matcheó (solo vale la pena pedirlos
+  // cuando ya decidimos aceptar el match)
   let genres = [];
-  const artistId = best.artists[0]?.id;
-  if (artistId) {
+  if (artistObj?.id) {
     try {
-      const artistData = await get(`/artists/${artistId}`);
+      const artistData = await get(`/artists/${artistObj.id}`);
       genres = artistData.genres ?? [];
     } catch { /* géneros son opcionales */ }
   }
 
-  const albumArt = best.album?.images?.[0]?.url ?? null;
-
   return {
+    status:                 'accepted',
     spotifyTrackName:       best.name,
     spotifyArtist:          best.artists.map(a => a.name).join(', '),
     spotifyAlbumArt:        albumArt,
     spotifyGenres:          genres,
-    spotifyMatchConfidence: bestScore,
+    spotifyMatchConfidence: bestCombined,
     spotifyId:              best.id,
+    titleScore:             bestTitleScore,
+    artistScore:            bestArtistScore,
+    durationDiffPct,
   };
 }
 

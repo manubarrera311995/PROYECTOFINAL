@@ -22,10 +22,16 @@ const DEFAULT_RETRY_WAIT = 5; // segundos entre reintentos
 // ─── Cookies (para videos age-restricted o con login requerido) ───────────────
 // Prioridad: YTDLP_COOKIES_FILE > YTDLP_COOKIES_FROM_BROWSER > nada
 // Ejemplos en .env:
-//   YTDLP_COOKIES_FROM_BROWSER=chrome   (lee cookies de Chrome automáticamente)
-//   YTDLP_COOKIES_FROM_BROWSER=firefox
+//   YTDLP_COOKIES_FROM_BROWSER=firefox  (lee cookies de Firefox automáticamente — recomendado)
+//   YTDLP_COOKIES_FROM_BROWSER=chrome
 //   YTDLP_COOKIES_FROM_BROWSER=edge
 //   YTDLP_COOKIES_FILE=./cookies.txt    (archivo exportado manualmente)
+//
+// Nota: Chrome/Edge en Windows suelen fallar con "Could not copy Chrome cookie
+// database" (si el navegador está abierto) o "Failed to decrypt with DPAPI"
+// (por el cifrado "App-Bound" que introdujeron en 2024). Firefox no tiene
+// ninguno de los dos problemas y funciona igual en Windows y macOS — por eso
+// es la opción recomendada.
 function buildCookieArgs() {
   if (process.env.YTDLP_COOKIES_FILE) {
     if (!existsSync(process.env.YTDLP_COOKIES_FILE)) {
@@ -40,6 +46,17 @@ function buildCookieArgs() {
   }
   return [];
 }
+
+// ─── Resolución de desafíos JS de YouTube (firmas cifradas) ───────────────────
+// Desde 2025 YouTube exige resolver un desafío de JavaScript para obtener las
+// URLs de audio/video de los videos con restricción de edad (u otros
+// protegidos). yt-dlp necesita:
+//   1. Un runtime de JS instalado (Deno recomendado — ver MANUAL_USUARIO.md).
+//   2. Los scripts "solucionadores" (yt-dlp-ejs), que aquí se descargan bajo
+//      demanda desde GitHub y se cachean localmente (solo se descargan una vez).
+// Si no hay ningún runtime de JS disponible, yt-dlp simplemente emite un aviso
+// y sigue sin estos formatos — no rompe las descargas que no lo necesitan.
+const REMOTE_COMPONENTS_ARGS = ['--remote-components', 'ejs:github'];
 
 // ─── Throttling anti-rate-limit ───────────────────────────────────────────────
 // YTDLP_SLEEP_REQUESTS: pausa (seg) entre peticiones HTTP internas de yt-dlp (default 2)
@@ -163,6 +180,7 @@ async function doDownload({ ytCmd, ytArgs, searchQuery, wavPath, id }) {
     ...ytArgs,
     ...cookieArgs,
     ...sleepArgs,
+    ...REMOTE_COMPONENTS_ARGS,
     '--print', '%(title)s\n%(duration)s',
     '--no-playlist',
     '--default-search', 'ytsearch',
@@ -185,6 +203,7 @@ async function doDownload({ ytCmd, ytArgs, searchQuery, wavPath, id }) {
     ...ytArgs,
     ...cookieArgs,
     ...sleepArgs,
+    ...REMOTE_COMPONENTS_ARGS,
     '--extract-audio',
     '--audio-format',    'wav',
     '--audio-quality',   '0',           // mejor calidad antes de convertir
