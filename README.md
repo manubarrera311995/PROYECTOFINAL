@@ -1,12 +1,37 @@
+<div align="center">
+
 # Audio DNA Pipeline
 
-Pipeline batch para automatizar el procesamiento de canciones del **Festival Estéreo Picnic (FEP)**:
+**Pipeline batch para automatizar el procesamiento emocional de canciones del Festival Estéreo Picnic (FEP)**
+
+[![Node.js](https://img.shields.io/badge/Node.js-%E2%89%A520_LTS-339933?logo=node.js&logoColor=white)](https://nodejs.org)
+[![Essentia](https://img.shields.io/badge/IA-Essentia%20MTG%20(MusiCNN)-4B8BBE)](https://essentia.upf.edu)
+[![ffmpeg](https://img.shields.io/badge/audio-ffmpeg-007808?logo=ffmpeg&logoColor=white)](https://ffmpeg.org)
+[![Spotify](https://img.shields.io/badge/enriquecimiento-Spotify%20Web%20API-1DB954?logo=spotify&logoColor=white)](https://developer.spotify.com)
+[![status](https://img.shields.io/badge/estado-v0.1.0-blue)](#)
 
 ```
-FEP_{year}.csv → descarga WAV (yt-dlp) → análisis emocional (Essentia + DSP) → DATA_{year}/{id}.json
+FEP_{año}.csv  →  descarga WAV (yt-dlp)  →  análisis emocional (Essentia + DSP)  →  DATA_{año}/{id}.json
 ```
 
-Genera JSONs con descriptores emocionales por canción sin intervención manual.
+</div>
+
+---
+
+Dado un CSV con la programación de una edición del festival, el pipeline busca cada canción en YouTube, descarga el audio, lo analiza con modelos de Machine Learning (mood, bailabilidad) combinados con procesamiento de señal (DSP) y genera **un JSON por canción** con descriptores emocionales y acústicos — sin intervención manual. Opcionalmente enriquece cada canción con metadata de Spotify (portada, géneros).
+
+## Índice
+
+- [Requisitos](#requisitos)
+- [Instalación](#instalación)
+- [Uso rápido](#uso-rápido)
+- [Todos los comandos](#todos-los-comandos)
+- [Formato de salida](#formato-de-salida)
+- [Estructura del repositorio](#estructura-del-repositorio)
+- [Rendimiento estimado](#rendimiento-estimado)
+- [Variables de entorno](#variables-de-entorno-env)
+- [Scripts de prueba](#scripts-de-prueba)
+- [Documentación adicional](#documentación-adicional)
 
 ---
 
@@ -56,6 +81,9 @@ npm run pipeline -- run --year 2013
 
 # Validar JSONs generados
 npm run pipeline -- validate --year 2013
+
+# (Opcional) enriquecer con datos de Spotify
+npm run pipeline -- enrich --year 2013
 ```
 
 ---
@@ -124,6 +152,14 @@ npm run pipeline -- validate --year 2013
 
 Genera `reports/quality_{year}.json` con conteos y detalles de errores.
 
+### `enrich` — enriquecer con Spotify
+
+```bash
+npm run pipeline -- enrich --year 2013
+```
+
+Agrega portada de álbum, géneros musicales y confianza del match a cada JSON ya generado. Requiere `SPOTIFY_CLIENT_ID` / `SPOTIFY_CLIENT_SECRET` en `.env`. Ver el detalle de qué campos toca en el [diccionario de datos](docs/DICCIONARIO_DE_DATOS.md#7-enriquecimiento-spotify).
+
 ---
 
 ## Formato de salida
@@ -148,6 +184,8 @@ Cada canción genera `DATA_{year}/{id}.json` (array de un elemento):
 
 El campo `moodSource` indica si usó los modelos Essentia (`"Essentia MTG ML"`) o el fallback DSP (`"DSP heurístico"`).
 
+> **¿De dónde sale cada atributo?** La explicación completa — qué modelo o fórmula genera cada campo, sus rangos, y cuáles solo aparecen tras enriquecer con Spotify — está en **[docs/DICCIONARIO_DE_DATOS.md](docs/DICCIONARIO_DE_DATOS.md)**.
+
 ---
 
 ## Estructura del repositorio
@@ -162,10 +200,14 @@ PROYECTOFINAL/
 │   ├── csv.js           # Lector FEP_*.csv
 │   ├── download.js      # yt-dlp → WAV
 │   ├── analyze.js       # ffmpeg + analyzeBuffer → JSON
+│   ├── spotify.js       # Cliente Spotify Web API + scoring de match
+│   ├── enrich.js        # Orquestación del enriquecimiento Spotify
 │   ├── progress.js      # Estado persistente progress/{year}.json
 │   ├── runner.js        # Orquestación con workers
 │   ├── validate.js      # Validación de JSONs
 │   └── cli.js           # CLI principal
+├── docs/
+│   └── DICCIONARIO_DE_DATOS.md  # Origen y cálculo de cada campo del JSON
 ├── models/              # Modelos Essentia TF.js (gitignored)
 ├── scripts/             # Setup y pruebas
 ├── downloads/           # WAVs temporales (gitignored)
@@ -210,4 +252,18 @@ npm run test:models    # Verifica los 4 modelos Essentia
 npm run test:core      # Prueba analyzeBuffer con PCM sintético
 npm run test:download  # Descarga 1 canción real (DE_3 Telescopio)
 npm run test:analyze   # Analiza el WAV descargado → JSON
+npm run test:spotify   # Verifica credenciales y búsqueda Spotify
 ```
+
+---
+
+## Documentación adicional
+
+| Documento | Contenido |
+|---|---|
+| **[MANUAL_USUARIO.md](MANUAL_USUARIO.md)** | Guía paso a paso para instalar y correr el pipeline desde cero (pensada para usuarios no técnicos) |
+| **[docs/DICCIONARIO_DE_DATOS.md](docs/DICCIONARIO_DE_DATOS.md)** | De dónde sale y cómo se calcula cada atributo del JSON de resultado (modelo de IA, fórmula DSP, CSV o Spotify) |
+
+---
+
+*Audio DNA Pipeline v0.1.0*

@@ -164,8 +164,14 @@ Ahora abre el archivo `.env` con cualquier editor de texto y configura las rutas
 # Carpeta donde están tus archivos FEP_*.csv
 CSV_DIR=./data/csv
 
-# Carpeta base donde se crearán las subcarpetas DATA_{año}/
+# Carpeta base donde se crearán las subcarpetas DATA_{año}/ (los JSON finales, ocupan poco)
 OUTPUT_BASE=./data/output
+
+# Carpeta donde se guardan los WAV descargados (esto es lo que ocupa más espacio)
+DOWNLOADS_DIR=./downloads
+
+# Carpeta de progreso (permite pausar/reanudar, ocupa muy poco)
+PROGRESS_DIR=./progress
 
 # ── Paralelismo ───────────────────────────────────────────────
 DOWNLOAD_WORKERS=4
@@ -201,6 +207,35 @@ Edita las rutas en `.env` con la ubicación real de tus archivos:
 CSV_DIR=/Users/tu-nombre/Documentos/festival/csvs
 OUTPUT_BASE=/Users/tu-nombre/Documentos/festival/output
 ```
+
+**Opción C — Guardar en un disco duro externo** *(recomendada si tu Mac tiene poco espacio libre)*
+
+Lo que más espacio ocupa no son los JSON finales (`OUTPUT_BASE`), sino los audios WAV temporales que se descargan de YouTube (`DOWNLOADS_DIR`): unos **30–50 GB por edición** del festival. Si quieres que tanto los audios descargados como los resultados queden en el disco externo (y no en el disco interno del Mac), sigue estos pasos:
+
+1. **Conecta el disco duro externo** a tu Mac antes de empezar y espera a que aparezca en el Finder (por ejemplo, con el nombre `MiDisco`).
+2. **Averigua la ruta exacta del disco.** En macOS, los discos externos aparecen siempre bajo `/Volumes/`. Para confirmar el nombre exacto, abre Terminal y escribe:
+   ```bash
+   ls /Volumes/
+   ```
+   Esto lista los discos conectados. Usa el nombre tal cual aparece (respetando mayúsculas y espacios).
+3. **Crea una carpeta para el proyecto dentro del disco:**
+   ```bash
+   mkdir -p "/Volumes/MiDisco/AudioDNA/output" "/Volumes/MiDisco/AudioDNA/downloads"
+   ```
+   > Si el nombre del disco tiene espacios (ej. `Mi Disco`), pon la ruta entre comillas como en el ejemplo de arriba.
+4. **Edita `.env`** apuntando `OUTPUT_BASE` y `DOWNLOADS_DIR` al disco externo:
+   ```env
+   OUTPUT_BASE=/Volumes/MiDisco/AudioDNA/output
+   DOWNLOADS_DIR=/Volumes/MiDisco/AudioDNA/downloads
+   ```
+   `CSV_DIR` y `PROGRESS_DIR` pueden quedarse en el disco interno (ocupan poquísimo espacio, unos KB).
+
+> **Importante:**
+> - El disco externo debe estar **conectado y desmontado correctamente al terminar cada sesión** (usa "Expulsar" en el Finder antes de desconectarlo, nunca lo saques mientras el pipeline está corriendo).
+> - Si el disco se desconecta a mitad del proceso, la descarga o el análisis en curso fallarán, pero el progreso ya guardado no se pierde: al reconectar el disco y volver a correr el mismo comando, el pipeline retoma donde quedó (ver "¿Se puede pausar y reanudar?" más abajo).
+> - Configura el Mac para que el disco no entre en reposo mientras trabaja: `Configuración del Sistema → Batería/Energía → Evitar que el ordenador entre en reposo automáticamente`.
+> - Si el disco está formateado en `exFAT` o `FAT32` (común para compatibilidad con Windows), funciona sin problema; no hace falta reformatearlo en `APFS`.
+> - Puedes combinar esto con `DELETE_WAV_AFTER=true` en `.env` (o `--delete-wav-after` al correr el comando) para borrar los WAV automáticamente después de analizarlos y ahorrar aún más espacio — pero como la idea es que las canciones descargadas queden guardadas, probablemente prefieras dejarlo en `false` y simplemente dejar que vivan en el disco externo.
 
 > **Nota sobre los workers:** Son hilos de trabajo simultáneo. `DOWNLOAD_WORKERS=4` descarga 4 canciones al mismo tiempo y `ANALYZE_WORKERS=2` analiza 2 a la vez. Valores más altos = más rápido, pero más uso de CPU/RAM. Los valores por defecto son un buen punto de partida.
 
@@ -479,10 +514,15 @@ Debe mostrar 4 carpetas: `mood_happy-musicnn`, `mood_relaxed-musicnn`, `mood_agg
 
 | Archivo/Carpeta | Descripción |
 |-----------------|-------------|
-| `data/output/DATA_{año}/` | JSONs de salida, uno por canción |
-| `progress/{año}.json` | Estado de progreso (permite reanudar) |
+| `data/output/DATA_{año}/` (`OUTPUT_BASE`) | JSONs de salida, uno por canción |
+| `progress/{año}.json` (`PROGRESS_DIR`) | Estado de progreso (permite reanudar) |
 | `reports/quality_{año}.json` | Reporte de calidad tras `validate` |
-| `downloads/{año}/` | Audios WAV temporales (se pueden borrar al terminar) |
+| `reports/spotify_review_{año}.json` | Candidatos dudosos y covers omitidos tras `enrich` |
+| `downloads/{año}/` (`DOWNLOADS_DIR`) | Audios WAV descargados — ocupan más espacio (30–50 GB por edición); se pueden borrar al terminar con `DELETE_WAV_AFTER=true` |
+
+> Las rutas entre paréntesis son las variables de `.env` que puedes redirigir a un disco duro externo si tu Mac tiene poco espacio — ver "Opción C — Guardar en un disco duro externo" en el Paso 2.3.
+
+> **¿Qué significa cada campo dentro de un JSON de canción?** Cada atributo (`happy`, `energy`, `keyNote`, `spotifyGenres`, etc.) se explica en detalle — con su origen exacto (modelo de IA, fórmula DSP, CSV o Spotify) — en [docs/DICCIONARIO_DE_DATOS.md](docs/DICCIONARIO_DE_DATOS.md).
 
 ---
 
