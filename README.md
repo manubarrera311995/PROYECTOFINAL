@@ -51,8 +51,8 @@ npm run process:all
 # Ver progreso
 npm run pipeline -- status
 
-# Reintentar los que fallaron
-npm run pipeline -- retry --year 2013
+# Reanudar pendientes/fallidos: vuelve a correr run, es idempotente
+npm run pipeline -- run --year 2013
 
 # Validar JSONs generados
 npm run pipeline -- validate --year 2013
@@ -63,6 +63,8 @@ npm run pipeline -- validate --year 2013
 ## Todos los comandos
 
 ### `run` — descargar + analizar
+
+`run` es idempotente: se puede volver a ejecutar las veces que sea necesario. Omite (`--skip-existing`, activo por defecto) los ids que ya tienen JSON válido en disco, y reprocesa automáticamente cualquier id pendiente, fallido o que haya quedado a medias por una interrupción anterior. Por eso también sirve como comando de "reintentar" — no existe un comando `retry` separado.
 
 ```bash
 npm run pipeline -- run [alcance] [rutas] [opciones]
@@ -97,13 +99,6 @@ npm run pipeline -- download --year 2013 --csv ./data/csv/FEP_2013.csv
 
 ```bash
 npm run pipeline -- analyze --year 2013 --output-dir ./data/output/DATA_2013
-```
-
-### `retry` — reintentar fallidos
-
-```bash
-npm run pipeline -- retry --year 2013
-npm run pipeline -- retry --all   # todas las ediciones
 ```
 
 ### `status` — ver progreso

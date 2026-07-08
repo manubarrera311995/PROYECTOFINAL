@@ -1,7 +1,4 @@
-# Manual de Usuario — Audio DNA Pipeline
-
-**Versión:** 0.1.0  
-**Sistema operativo:** macOS  
+# Manual de Usuario — Audio DNA Pipeline 
 
 ---
 
@@ -296,10 +293,10 @@ npm run pipeline -- status --year 2013 --watch 10
 
 ## Paso 5 — Reintentar canciones fallidas
 
-Algunas canciones pueden fallar porque YouTube no encontró el audio o hubo un error de red. Al terminar, ejecuta:
+Algunas canciones pueden fallar porque YouTube no encontró el audio o hubo un error de red. El comando `run` es idempotente: omite las canciones que ya tienen JSON válido y vuelve a intentar automáticamente las pendientes o fallidas. Al terminar, simplemente vuelve a ejecutar el mismo comando del Paso 3:
 
 ```bash
-npm run pipeline -- retry --year 2013
+npm run pipeline -- run --year 2013
 ```
 
 ---
@@ -378,7 +375,7 @@ candidatos dudosos y los covers omitidos, para auditarlos fácilmente.
 4. npm run test:models                → verifica que los modelos de IA cargan
 5. npm run test:core                  → verifica el motor de análisis
 6. npm run pipeline -- run --year N   → procesa el festival
-7. npm run pipeline -- retry --year N → reintenta los fallidos
+7. npm run pipeline -- run --year N   → repite si quedaron pendientes/fallidos
 8. npm run pipeline -- validate       → revisa la calidad del resultado
 9. npm run pipeline -- enrich ...     → (opcional) agrega datos de Spotify
 ```
@@ -393,7 +390,7 @@ candidatos dudosos y los covers omitidos, para auditarlos fácilmente.
 | `npm run pipeline -- run --all` | Todas las ediciones en `CSV_DIR` |
 | `npm run pipeline -- download --year 2013` | Solo descargar audios |
 | `npm run pipeline -- analyze --year 2013` | Solo analizar (si ya tienes los WAV) |
-| `npm run pipeline -- retry --year 2013` | Reintentar canciones fallidas |
+| `npm run pipeline -- run --year 2013` | Reanudar/reintentar pendientes y fallidos (idempotente) |
 | `npm run pipeline -- status --year 2013` | Ver progreso |
 | `npm run pipeline -- status --year 2013 --watch 10` | Monitor en vivo (cada 10 s) |
 | `npm run pipeline -- validate --year 2013` | Reporte de calidad |
@@ -455,7 +452,7 @@ Este es un error distinto al de arriba — pasa con canciones específicas que Y
 3. Verifica que Deno está instalado: `deno --version`.
 4. Si sigue fallando, cierra Firefox por completo y ábrelo de nuevo para refrescar la sesión, luego reintenta con:
    ```bash
-   npm run pipeline -- retry --year 2013
+   npm run pipeline -- run --year 2013
    ```
 
 > **Evita usar `chrome` o `safari`** en `YTDLP_COOKIES_FROM_BROWSER` — en pruebas fallaron por bloqueos de permisos (Safari) o cifrado incompatible (Chrome). Firefox es la única opción que probamos que funciona de forma consistente.

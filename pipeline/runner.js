@@ -21,7 +21,7 @@ import { enrichEdition }   from './enrich.js';
 import {
   loadProgress, saveProgress,
   updateId, initIds,
-  getIdsByStatus, countByStatus,
+  countByStatus,
 } from './progress.js';
 
 // ─── Opciones por defecto ─────────────────────────────────────────────────────
@@ -135,7 +135,6 @@ export async function runYear(opts) {
       }
     }
 
-    if (o.mode === 'retry')    return s === 'failed';
     if (o.mode === 'download') return s !== 'done' && s !== 'downloaded';
     if (o.mode === 'analyze') {
       const wavPath = join(o.downloadsDir, String(year), `${id}.wav`);
@@ -275,24 +274,6 @@ export async function runYear(opts) {
 
 export const downloadYear = opts => runYear({ ...opts, mode: 'download' });
 export const analyzeYear  = opts => runYear({ ...opts, mode: 'analyze'  });
-
-export async function retryYear(opts) {
-  const progDir = opts.progressDir || DEFAULTS.progressDir;
-  const state   = await loadProgress(opts.year, progDir);
-  const failedIds = getIdsByStatus(state, 'failed');
-
-  if (!failedIds.length) {
-    console.log(`[${opts.year}] No hay ids fallidos.`);
-    return summarize(state);
-  }
-
-  for (const id of failedIds) {
-    updateId(state, id, { status: 'pending', error: undefined, retrying: true });
-  }
-  await saveProgress(state, opts.year, progDir);
-
-  return runYear({ ...opts, mode: 'run', onlyIds: failedIds });
-}
 
 // ─── Helper ───────────────────────────────────────────────────────────────────
 

@@ -10,7 +10,7 @@
 import 'dotenv/config';
 import { existsSync, readdirSync } from 'node:fs';
 import { resolve, join }            from 'node:path';
-import { runYear, downloadYear, analyzeYear, retryYear } from './runner.js';
+import { runYear, downloadYear, analyzeYear } from './runner.js';
 import { loadProgress, countByStatus, getIdsByStatus }  from './progress.js';
 import { validateEdition } from './validate.js';
 import { readCsv }         from './csv.js';
@@ -26,10 +26,9 @@ Uso:
   npm run pipeline -- <comando> [opciones]
 
 Comandos:
-  run        Descargar y analizar una o más ediciones
+  run        Descargar y analizar una o más ediciones (reanuda pendientes/fallidos automáticamente)
   download   Solo descargar WAV (sin analizar)
   analyze    Solo analizar WAV ya descargados → JSON
-  retry      Reintentar ids fallidos
   status     Ver progreso  [--watch N: refresco automático cada N segundos]
   validate   Generar reporte de calidad (reports/quality_{year}.json)
   enrich     Enriquecer JSONs con Spotify (álbum art, géneros, confidence)
@@ -51,7 +50,6 @@ Opciones de comportamiento:
   --skip-existing      Omitir ids con JSON válido [default: true]
   --no-skip-existing   Reprocesar todo
   --delete-wav-after   Borrar WAV tras análisis exitoso
-  --failed-only        (solo retry) Reintentar solo los fallidos
 
 Ejemplos:
   # Una edición con rutas explícitas
@@ -65,8 +63,8 @@ Ejemplos:
   # Atajo con rutas fijas del .env
   npm run process:all
 
-  # Reintentar fallidos de 2013
-  npm run pipeline -- retry --year 2013 --failed-only
+  # Reanudar/reintentar pendientes y fallidos de 2013 (vuelve a correr run)
+  npm run pipeline -- run --year 2013
 
   # Ver progreso
   npm run pipeline -- status --year 2013
@@ -165,18 +163,6 @@ async function cmdRun(args, mode = 'run') {
     if (mode === 'download') await downloadYear(opts);
     else if (mode === 'analyze') await analyzeYear(opts);
     else                         await runYear(opts);
-  }
-}
-
-async function cmdRetry(args) {
-  let years = resolveYears(args);
-  const csvDir = resolve(args['csv-dir'] || DEFAULT_CSV_DIR);
-  if (!years) years = detectYearsFromCsvDir(csvDir);
-
-  for (const year of years) {
-    const opts = buildYearOpts(year, args);
-    if (!existsSync(opts.csvPath)) { console.warn(`[${year}] CSV no encontrado — saltando`); continue; }
-    await retryYear(opts);
   }
 }
 
@@ -373,7 +359,6 @@ async function main() {
       case 'run':      await cmdRun(args, 'run');      break;
       case 'download': await cmdRun(args, 'download'); break;
       case 'analyze':  await cmdRun(args, 'analyze');  break;
-      case 'retry':    await cmdRetry(args);            break;
       case 'status':   await cmdStatus(args);           break;
       case 'validate': await cmdValidate(args);         break;
       case 'enrich':   await cmdEnrich(args);            break;
