@@ -3,7 +3,9 @@
  * Descarga de audio desde YouTube vía yt-dlp.
  *
  * Flujo: CSV fila (id, banda, cancion, year) → WAV en downloads/{year}/{id}.wav
- * Búsqueda: `ytsearch1:{banda} - {cancion}` (primer resultado de YouTube)
+ * Búsqueda: `ytsearch1:{banda} - {cancion sin anotaciones entre paréntesis/comillas}`
+ * (primer resultado de YouTube). El `cancion` original no se modifica, solo se
+ * usa una versión limpia para la búsqueda — ver buildSearchTitle().
  * Log: título del video elegido + duración en segundos.
  */
 
@@ -72,6 +74,24 @@ function buildSleepArgs() {
 }
 
 // ─── Utilidades ───────────────────────────────────────────────────────────────
+
+/**
+ * Limpia anotaciones del CSV (paréntesis/corchetes descriptivos y comillas)
+ * que no forman parte del título real de la canción, para usarlas solo en la
+ * query de búsqueda de YouTube. El valor original de `cancion` NO se toca en
+ * ningún otro lado (metadata del JSON final, logs de progreso, etc.), solo se
+ * usa esta versión limpia para construir `searchQuery`.
+ *
+ * Ej: 'Tamale (shortened; alt "Colombia" intro/outro)' → 'Tamale'
+ */
+function buildSearchTitle(cancion) {
+  const cleaned = cancion
+    .replace(/["“”]/g, '')
+    .replace(/\s*[([][^)\]]*[)\]]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return cleaned || cancion; // si queda vacío, usar el original como fallback
+}
 
 /**
  * Lanza un proceso hijo y devuelve { stdout, stderr, code }.
@@ -147,8 +167,9 @@ export async function downloadTrack({
 
   const wavPath = join(destDir, `${id}.wav`);
 
-  // Construir query de búsqueda
-  const searchQuery = `ytsearch1:${banda} - ${cancion}`;
+  // Construir query de búsqueda (usa una versión limpia de `cancion`, sin
+  // anotaciones entre paréntesis/comillas — ver buildSearchTitle)
+  const searchQuery = `ytsearch1:${banda} - ${buildSearchTitle(cancion)}`;
 
   let lastError = null;
   for (let attempt = 1; attempt <= retries; attempt++) {

@@ -83,10 +83,10 @@ ffmpeg -version
 
 ### 1.4 Python 3 y yt-dlp (descargador de YouTube)
 
-Python 3 ya viene en macOS moderno. Instala yt-dlp:
+Python 3 ya viene en macOS moderno. Instala yt-dlp con Homebrew (recomendado):
 
 ```bash
-pip3 install yt-dlp
+brew install yt-dlp
 ```
 
 Verifica:
@@ -95,9 +95,16 @@ Verifica:
 yt-dlp --version
 ```
 
-> Si `pip3` no está disponible, instala Python con Homebrew primero:
+> **¿Por qué Homebrew y no `pip3 install yt-dlp`?** En macOS moderno, el Python instalado por Homebrew bloquea `pip3 install` fuera de un entorno virtual y muestra el error `error: externally-managed-environment`. Si prefieres usar `pip3` de todas formas, tienes dos opciones:
 > ```bash
-> brew install python && pip3 install yt-dlp
+> # Opción A: forzar la instalación (rápido, pero no aislado)
+> pip3 install --break-system-packages yt-dlp
+>
+> # Opción B: usar un entorno virtual (más limpio)
+> python3 -m venv ~/.venvs/yt-dlp
+> source ~/.venvs/yt-dlp/bin/activate
+> pip3 install yt-dlp
+> # nota: con esta opción, yt-dlp solo estará disponible mientras el venv esté activo
 > ```
 
 ### 1.5 Firefox + Deno (necesarios para descargar canciones con restricción de edad)
@@ -127,6 +134,20 @@ deno --version   # debe mostrar 2.3.0 o superior
 ```
 
 No necesitas configurar nada más: el pipeline detecta a Deno automáticamente si está instalado. La primera vez que se descargue una canción con restricción de edad, yt-dlp bajará un pequeño script "solucionador" desde GitHub y lo guardará en caché (necesita internet solo esa primera vez).
+
+### 1.6 Xcode Command Line Tools (necesarias para instalar TensorFlow)
+
+El proyecto usa `@tensorflow/tfjs-node` para el análisis de audio con IA. Este paquete no siempre tiene un binario ya compilado para Mac con chip Apple (M1/M2/M3/M4), así que `npm install` a veces necesita compilarlo en tu propia máquina, y para eso requiere las herramientas de desarrollo de Apple.
+
+Instálalas (si ya las tienes, no pasa nada, el comando lo indica):
+
+```bash
+xcode-select --install
+```
+
+Sigue las instrucciones en la ventana emergente que aparece. Esto puede tardar varios minutos.
+
+> Si más adelante `npm install` falla con un error de compilación como `fatal error: 'memory' file not found`, casi siempre significa que estas herramientas quedaron rotas tras una actualización de macOS. La solución es reinstalarlas desde cero (ver sección de solución de problemas más abajo).
 
 ---
 
@@ -458,15 +479,53 @@ Luego cierra y vuelve a abrir Terminal.
 
 ### "command not found: yt-dlp"
 ```bash
-pip3 install yt-dlp
-# o con Homebrew:
 brew install yt-dlp
+```
+
+### "error: externally-managed-environment" al hacer `pip3 install`
+Es una protección de Homebrew en macOS moderno, no un error real de tu sistema. Usa una de estas opciones:
+```bash
+# Opción A: instala yt-dlp directamente con Homebrew (recomendado, evita pip por completo)
+brew install yt-dlp
+
+# Opción B: fuerza la instalación con pip
+pip3 install --break-system-packages yt-dlp
+
+# Opción C: usa un entorno virtual
+python3 -m venv ~/.venvs/yt-dlp && source ~/.venvs/yt-dlp/bin/activate && pip3 install yt-dlp
 ```
 
 ### "command not found: ffmpeg"
 ```bash
 brew install ffmpeg
 ```
+
+### `npm install` falla al compilar `@tensorflow/tfjs-node` (errores de `node-gyp`, `node-pre-gyp`, `fatal error: 'memory' file not found`, `404 Not Found` al descargar `libtensorflow`)
+
+Esto pasa porque `tfjs-node` no siempre trae un binario precompilado para Mac con chip Apple, así que `npm install` intenta compilarlo localmente — y esa compilación falla si las Command Line Tools de Xcode están rotas o desactualizadas (algo muy común después de actualizar macOS).
+
+**Solución: reinstala las Command Line Tools desde cero.**
+
+```bash
+sudo rm -rf /Library/Developer/CommandLineTools
+xcode-select --install
+```
+
+Sigue las instrucciones de la ventana emergente hasta que termine. Luego, dentro de la carpeta del proyecto, borra lo que se instaló a medias y vuelve a intentar:
+
+```bash
+rm -rf node_modules package-lock.json
+npm cache clean --force
+npm install
+```
+
+Si sigue fallando, confirma que Xcode apunta a la ruta correcta:
+
+```bash
+sudo xcode-select -s /Library/Developer/CommandLineTools
+```
+
+(o, si tienes Xcode.app completo instalado desde la App Store, usa `sudo xcode-select -s /Applications/Xcode.app/Contents/Developer` en su lugar).
 
 ### "command not found: deno"
 ```bash
